@@ -5,8 +5,8 @@
 # Application code (test project)
 app/
 
-# Tests (test project)
-tests/
+# Tests (test project, not framework skill tests)
+# tests/
 
 # Dependencies (test project)
 requirements.txt
@@ -27,9 +27,6 @@ specs/*
 # But keep .gitkeep to preserve folder structure
 !specs/.gitkeep
 
-# Instance constitution (template is in templates/)
-.framework/CONSTITUTION.md
-
 # ===================
 # Python
 # ===================
@@ -48,6 +45,11 @@ build/
 
 # Internal analysis documents (not for public release)
 FRAMEWORK-ANALYSIS.md
+
+# ===================
+# Reference Projects
+# ===================
+reference/
 
 # ===================
 # IDE / OS

@@ -27,6 +27,20 @@
 | Database | | |
 | Testing | | |
 | Linting | | |
+| Package Manager | | |
+
+---
+
+## Commands
+
+| Action | Command |
+|--------|---------|
+| Run all tests | |
+| Run single test file | |
+| Build | |
+| Lint | |
+| Type check | (if applicable) |
+| Format | (if applicable) |
 
 ---
 
@@ -47,15 +61,27 @@
 ```
 src/
 ├── ...
+test/
+├── ...
 ```
 
 ### Patterns to Use
 
-- 
+-
 
 ### Patterns to Avoid
 
-- 
+-
+
+---
+
+## Error Handling
+
+| Concern | Approach |
+|---------|----------|
+| Strategy | (throw exceptions / return Result type / error codes) |
+| Logging | (library and level conventions) |
+| User-facing errors | (format: RFC 7807 / custom JSON / HTTP status only) |
 
 ---
 
@@ -69,7 +95,7 @@ src/
 
 ### Test File Conventions
 
-- 
+-
 
 ---
 
@@ -87,7 +113,11 @@ src/
 
 ## Security Standards
 
-- 
+| Concern | Approach |
+|---------|----------|
+| Input Validation | |
+| Authentication | (method, or N/A) |
+| Secrets Handling | |
 
 ---
 
@@ -95,9 +125,9 @@ src/
 
 Before merge, code must pass:
 
-- [ ] 
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
+- [ ]
 
 ---
 
@@ -105,4 +135,4 @@ Before merge, code must pass:
 
 [Optional: Unresolved decisions]
 
-- [ ] 
+- [ ]
