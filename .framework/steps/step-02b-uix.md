@@ -20,11 +20,12 @@ uixScreenshotPattern: '{spec_folder}/figma_screenshot_*.png'
 
 ## STEP GOAL
 
-Create (or update) UIX-SPEC.md by applying the uix-creation rules and template. Map DESIGN.md segments to Figma files and node IDs. When Figma is in scope, **fetch design context** via the official Figma MCP server **`figma`** (tool **`get_design_context`**) and save artifacts under the spec folder for **step 04 (implementation)** to use as layout reference. This step is optional: if this spec has no Figma, choose [S] Skip to continue to Task Breakdown.
+Create (or update) UIX-SPEC.md by applying the uix-creation rules and template. Map DESIGN.md segments to Figma files and node IDs. When Figma is in scope, **fetch design context** via the official Figma MCP server **`figma`** (tool **`get_design_context`**) and save artifacts under the spec folder for **step 04 (implementation)** to use as layout reference. **Downstream implementation must follow § 2b** (iterative Figma compare-fix loop — min 2 / max 5 passes with drift list) so UI output is pixel-accurate, not a single-pass approximation. This step is optional: if this spec has no Figma, choose [S] Skip to continue to Task Breakdown.
 
 ## RULES
 
 - READ this entire step file before taking any action.
+- When Figma is in scope for this spec, **§ 2b** defines a **mandatory iterative** Figma fidelity loop for UI implementation (min 2 / max 5 automatic re-fetch + compare-fix passes with a drift list). Implementation agents must follow § 2b in addition to UIX-SPEC artifacts.
 - When this step says "Apply {ref}", read the referenced file completely and follow ALL its sections in order.
 - Apply {ruleRef} for all domain behavior, constraints, and output. Do not restate or override the rule.
 - Use the template from {templateRef}.
@@ -54,24 +55,76 @@ Do NOT invent Figma URLs or node-ids — only use what the user provides.
 
 ### 2a. Fetch design context via official Figma MCP (when Figma is provided)
 
-Apply **{ruleRef} → "Figma Design Context (Official Figma MCP)"** in full. Summary:
+Apply **{ruleRef} -> "Figma Design Context (Official Figma MCP)"** in full. Summary:
 
 1. **Prerequisite:** Official Figma MCP server **`figma`** is connected (remote at `https://mcp.figma.com/mcp`). User must have authenticated via OAuth through their MCP client (e.g. Cursor). No local server or API token env var required.
 2. **Tool:** **`get_design_context`**
    - Pass the user's Figma URL directly; the tool extracts `fileKey` and `node-id` automatically.
    - Prefer a **single root frame or component** per call to keep context bounded.
    - Returns a structured design representation (React + Tailwind by default; customizable via prompt).
-3. **Tool (optional):** **`get_screenshot`** — capture a visual reference for each key frame/component.
-4. **Tool (optional):** **`get_variable_defs`** — extract design tokens (colors, spacing, typography) when needed.
-5. **Save:** Write the `get_design_context` result to `{spec_folder}/figma_context_<NODE_URL_FORM>.md` where `<NODE_URL_FORM>` uses **hyphens** (`0:1` → `figma_context_0-1.md`). For a **full-frame** pull with no specific node, use **`figma_context_full.md`**. Save screenshots (if any) as `{spec_folder}/figma_screenshot_<NODE_URL_FORM>.png`.
+3. **Tool (optional):** **`get_screenshot`** -- capture a visual reference for each key frame/component.
+4. **Tool (optional):** **`get_variable_defs`** -- extract design tokens (colors, spacing, typography) when needed.
+5. **Save:** Write the `get_design_context` result to `{spec_folder}/figma_context_<NODE_URL_FORM>.md` where `<NODE_URL_FORM>` uses **hyphens** (`0:1` -> `figma_context_0-1.md`). For a **full-frame** pull with no specific node, use **`figma_context_full.md`**. Save screenshots (if any) as `{spec_folder}/figma_screenshot_<NODE_URL_FORM>.png`.
 6. **UIX-SPEC.md:** Reference each saved file (relative path, e.g. `./figma_context_0-1.md`) in the Design Context Artifacts table so **step 04** can locate layout references without guessing.
 
 If MCP is unavailable (or user hasn't authenticated), skip 2a and note in UIX-SPEC **Open Questions** that design context is pending; do **not** fabricate file contents.
 
+### 2b. Figma -> code fidelity loop (normative for step 04)
+
+This section is **normative** for any agent or developer that implements UI from this spec's Figma mapping. The first implementation pass is always a **draft** -- never treat it as pixel-perfect. Do **not** wait for the user to say "check Figma again"; iterative re-checking is the default workflow.
+
+> **Iteration bounds: minimum 2, maximum 5** compare-fix passes after the initial UI build.
+
+#### Loop procedure (execute once per pass)
+
+For each iteration **i** (where i = 1 ... 5):
+
+**Step A -- Re-fetch Figma.**
+Call **`get_design_context`** (and optionally **`get_screenshot`**) via the Figma MCP for every node listed in UIX-SPEC's Design Context Artifacts table. This gives the agent a fresh structural + token view of the target design -- the same as a developer re-opening Figma to compare.
+
+**Step B -- Build / update the drift list.**
+Compare the current implementation against the re-fetched Figma data. Write (or update) a concrete **drift list** -- a bullet list of every visible mismatch, with measured values on both sides. Categories to check (all of them, every pass):
+
+- Spacing: padding, margin, gap (e.g. "card body padding is 16px, Figma shows 24px")
+- Typography: font-family, size, weight, line-height, letter-spacing
+- Colors: fills, strokes, opacity, gradients
+- Corner radii, shadows, borders
+- Alignment, flex direction, order
+- Component / frame sizing and constraints (width, height, min/max)
+
+**Step C -- Exit check.**
+If the drift list is **empty** (zero items) **and** i >= 2, the loop ends -- fidelity is achieved. Skip remaining passes. If i < 2, continue to Step D even if the drift list is empty (a second Figma re-fetch often catches things the first comparison missed).
+
+**Step D -- Fix.**
+Address every item on the drift list, largest visual impact first. After fixing each item, **strike through or remove** the resolved bullet so the list reflects only remaining gaps.
+
+**Step E -- Hard stop guard.**
+If i = 5 and the drift list still has unresolved items, **stop iterating**. Append the remaining drift items to UIX-SPEC **Open Questions** (or a `## Remaining Drift` section) so the reviewer or user can see what was not fully resolved. Do not silently drop unresolved items.
+
+After Step D (or Step E on the final pass), increment i and return to Step A for the next pass.
+
+#### Key rules
+
+- The loop MUST run **at least 2** full passes. Even if pass 1 shows zero drift, pass 2 re-fetches Figma and re-checks -- this catches missed details.
+- The loop MUST NOT exceed **5** passes. This prevents infinite refinement while still allowing enough iterations to reach pixel-level accuracy.
+- The drift list is the agent's **explicit awareness** of what remains wrong. Without it, passes are vague "make it closer" attempts. Every pass must produce or update the drift list before fixing.
+
+#### Where this loop runs
+
+This loop executes inside **step 04 (Implementation)** during the implementation of any UI-related task that has Figma mapping in UIX-SPEC. Step 04 must read this section (section 2b) and follow the loop procedure above for each such task.
+
+#### Handoff into UIX-SPEC
+
+When saving `{outputFile}` with Figma in scope (section 3), add the following to the **Overview** paragraph (or as a bullet under **Open Questions**):
+
+> "Implementation of UI tasks must follow step-02b-uix section 2b: minimum 2 / maximum 5 Figma compare-fix iterations with automatic MCP re-fetch and a drift list per pass. See `.framework/steps/step-02b-uix.md` section 2b for the full loop procedure."
+
+This ensures that any agent reading only UIX-SPEC knows the iterative bar and where to find the full instructions.
+
 ### 3. Create or skip
 
-- **If user provides Figma data (or wants a skeleton):** Apply {ruleRef} using {templateRef}. Save to `{outputFile}` with Status: DRAFT. If section 2a ran, ensure design context artifacts match `{uixContextPattern}` naming (and screenshots match `{uixScreenshotPattern}`) and are linked from UIX-SPEC. Go to section 4.
-- **If user skips (no Figma):** Update `{stateFile}`: append `'step-02b-uix'` to `stepsCompleted`. Set `uixSkipped: true` in frontmatter. Offer to commit: "Commit workflow state? [Y/n]" — if yes: `git add {stateFile}` and commit with message `"spec({spec_id}): skip UIX spec (no Figma)"`. Auto-continue: load and follow `{nextStepFile}`. STOP (do not present approval menu).
+- **If user provides Figma data (or wants a skeleton):** Apply {ruleRef} using {templateRef}. Save to `{outputFile}` with Status: DRAFT. If section 2a ran, ensure design context artifacts match `{uixContextPattern}` naming (and screenshots match `{uixScreenshotPattern}`) and are linked from UIX-SPEC. Apply the **section 2b handoff** sentence (Overview or Open Questions). Go to section 4.
+- **If user skips (no Figma):** Update `{stateFile}`: append `'step-02b-uix'` to `stepsCompleted`. Set `uixSkipped: true` in frontmatter. Offer to commit: "Commit workflow state? [Y/n]" -- if yes: `git add {stateFile}` and commit with message `"spec({spec_id}): skip UIX spec (no Figma)"`. Auto-continue: load and follow `{nextStepFile}`. STOP (do not present approval menu).
 
 ### 4. Approval gate
 
@@ -85,20 +138,20 @@ Display:
 ```
 UIX-SPEC.md is APPROVED.
 
-[C] Continue — proceed to Task Breakdown (Step 3 of 5)
-[V] View DESIGN.md — display for reference (read-only)
-[B] Back to Design — re-edit DESIGN.md (step 2)
-[S] Skip UIX — remove Figma mapping, continue without it
-[X] Exit — pause workflow; resume later with /flow
+[C] Continue -- proceed to Task Breakdown (Step 3 of 5)
+[V] View DESIGN.md -- display for reference (read-only)
+[B] Back to Design -- re-edit DESIGN.md (step 2)
+[S] Skip UIX -- remove Figma mapping, continue without it
+[X] Exit -- pause workflow; resume later with /flow
 ```
 
 ### Menu handling
 
 - **IF user approves (during approval gate):**
-  1. Update Status → APPROVED.
+  1. Update Status -> APPROVED.
   2. Update `{stateFile}`: append `'step-02b-uix'` to `stepsCompleted`.
   3. Set `uixSkipped: false` in `{stateFile}` frontmatter.
-  4. Offer to commit: "Commit UIX-SPEC.md (and any `figma_context_*.md` / `figma_screenshot_*.png` files) to the current branch? [Y/n]" — if yes: `git add {outputFile} {spec_folder}/figma_context_*.md {spec_folder}/figma_screenshot_*.png {stateFile}` (shell glob as appropriate) and commit with message `"spec({spec_id}): create UIX spec (Figma)"`.
+  4. Offer to commit: "Commit UIX-SPEC.md (and any `figma_context_*.md` / `figma_screenshot_*.png` files) to the current branch? [Y/n]" -- if yes: `git add {outputFile} {spec_folder}/figma_context_*.md {spec_folder}/figma_screenshot_*.png {stateFile}` (shell glob as appropriate) and commit with message `"spec({spec_id}): create UIX spec (Figma)"`.
   5. Present menu (section 5).
 - **IF [C] Continue:**
   1. Read fully and follow: `{nextStepFile}` (step-03-tasks.md).
@@ -121,7 +174,7 @@ UIX-SPEC.md is APPROVED.
 
 ## CRITICAL COMPLETION NOTE
 
-ONLY when `{nextStepFile}` is loaded via an explicit user action — [C] Continue, [S] Skip, or the auto-continue after a skip in section 3 — will you proceed to the next step. Do NOT load `{nextStepFile}` without one of these triggers. State must be updated before loading.
+ONLY when `{nextStepFile}` is loaded via an explicit user action -- [C] Continue, [S] Skip, or the auto-continue after a skip in section 3 -- will you proceed to the next step. Do NOT load `{nextStepFile}` without one of these triggers. State must be updated before loading.
 
 ---
 
@@ -130,6 +183,7 @@ ONLY when `{nextStepFile}` is loaded via an explicit user action — [C] Continu
 - All domain and quality criteria per {ruleRef} are satisfied.
 - UIX-SPEC.md created with correct Figma mappings, or step skipped cleanly.
 - Design context artifacts (if any) saved with correct naming and referenced in UIX-SPEC.md.
+- If Figma is in scope: **section 2b** fidelity loop (min 2 / max 5 passes, drift list, automatic Figma re-fetch) is **handed off** in UIX-SPEC (Overview or Open Questions) so implementation agents execute the loop without user prompting.
 - Status APPROVED before continuing (unless skipping).
 - State updated before loading next step (`uixSkipped` set correctly).
 
@@ -140,3 +194,4 @@ ONLY when `{nextStepFile}` is loaded via an explicit user action — [C] Continu
 - Not updating state before loading next step.
 - Loading next step before user selects [C] or [S].
 - Fabricating design context file contents without calling the MCP tool.
+- Implementation agent skipping the section 2b fidelity loop or running fewer than 2 Figma compare-fix passes for UI tasks with Figma mapping.

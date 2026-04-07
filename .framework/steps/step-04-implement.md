@@ -41,7 +41,7 @@ Implement tasks from TASKS.md one at a time. After each task, present a menu so 
 - Read {tasksFile} completely. Extract the ordered list of tasks (T1, T2, T3, …).
 - Read {designFile} (for architecture and component details).
 - Read {constitutionRef} (for coding standards).
-- If `{spec_folder}/UIX-SPEC.md` exists: read it for Figma mapping context. For UI-related tasks, reference the corresponding Figma segment and load any `figma_context_*.md` design context files listed in UIX-SPEC.md as layout reference for implementation.
+- If `{spec_folder}/UIX-SPEC.md` exists: read it for Figma mapping context. For UI-related tasks, reference the corresponding Figma segment and load any `figma_context_*.md` design context files listed in UIX-SPEC.md as layout reference for implementation. **Also read `.framework/steps/step-02b-uix.md` section 2b** (Figma fidelity loop). Any UI task that has Figma mapping must follow the iterative loop defined there: minimum 2 / maximum 5 compare-fix passes with automatic Figma MCP re-fetch and a drift list per pass. Do not treat the first UI build as final.
 - Read `{stateFile}` frontmatter. Extract `tasksCompleted` (array of completed task IDs, e.g. `['T1', 'T2']`).
 - **Reconcile state with TASKS.md checkboxes**: If `tasksCompleted` and {tasksFile} checkboxes disagree, `tasksCompleted` in {stateFile} is authoritative. Update {tasksFile} checkboxes to match:
   - Task ID in `tasksCompleted` but checkbox is `[ ]` or `[~]` → set to `[x]`
